@@ -92,7 +92,7 @@ for i_episode in range(15000):
     state_next,r,_,_ = env.step(u[0])
     state_next = makeState(state_next)
     print("reward: ", r, " iter: ", i_episode)
-    if i_episode % 10 == 0:
+    if i_episode % 10 == 0 and i_episode < 50:
         new_X = np.array([np.hstack((state_next, u[0]))])
         new_Y = np.array([state_next - state])
         X = np.concatenate((X,new_X))
