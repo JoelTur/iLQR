@@ -1,9 +1,33 @@
 import autograd.numpy as np
 from autograd import grad, jacobian
+from typing import List, Tuple, Callable, Any
+import numpy as np
 
 class iLQR:
+    """
+    Iterative Linear Quadratic Regulator (iLQR) implementation.
+    
+    This class implements the iLQR algorithm for trajectory optimization,
+    which iteratively linearizes the dynamics and solves for optimal control
+    using the Bellman equation.
+    """
 
-    def __init__(self, model, cost, actionspace_dim, statepace_dim, iters = 100):
+    def __init__(self, 
+                 model: Callable[[np.ndarray, np.ndarray], np.ndarray],
+                 cost: Callable[[np.ndarray, np.ndarray], float],
+                 actionspace_dim: int,
+                 statepace_dim: int,
+                 iters: int = 100):
+        """
+        Initialize the iLQR controller.
+        
+        Args:
+            model: Dynamics function that takes state and action as input
+            cost: Cost function that takes state and action as input
+            actionspace_dim: Dimension of the action space
+            statepace_dim: Dimension of the state space
+            iters: Number of iterations for the backward pass
+        """
         self.itercnt = iters
         self.f = model
         self.a_dim = actionspace_dim
@@ -25,7 +49,19 @@ class iLQR:
         self.Vx = [np.zeros(statepace_dim) for i in range(iters + 1)]
         self.Vxx = [np.zeros((statepace_dim,statepace_dim)) for i in range(iters + 1)]
 
-    def backward(self, X, U):
+    def backward(self, X: List[np.ndarray], U: List[np.ndarray]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """
+        Perform the backward pass of iLQR.
+        
+        Args:
+            X: List of states along the trajectory
+            U: List of controls along the trajectory
+            
+        Returns:
+            Tuple of (k_seq, K_seq) where:
+            - k_seq: List of feedforward gains
+            - K_seq: List of feedback gains
+        """
         ## Set loss function
         self.V[-1] = self.C(X[-1], U[-1])
         self.Vx[-1] = self.C_x(X[-1], U[-1])
@@ -67,7 +103,31 @@ class iLQR:
         k_seq.reverse()
         return k_seq, K_seq
 
-    def forward(self, model, X, U, k, K, alpha, dynamics):
+    def forward(self, 
+                model: Any,
+                X: List[np.ndarray],
+                U: List[np.ndarray],
+                k: List[np.ndarray],
+                K: List[np.ndarray],
+                alpha: float,
+                dynamics: Callable[[np.ndarray, np.ndarray], np.ndarray]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """
+        Perform the forward pass of iLQR.
+        
+        Args:
+            model: Learned dynamics model
+            X: List of states along the trajectory
+            U: List of controls along the trajectory
+            k: List of feedforward gains
+            K: List of feedback gains
+            alpha: Line search parameter
+            dynamics: True dynamics function
+            
+        Returns:
+            Tuple of (x_hat, u_hat) where:
+            - x_hat: Updated states
+            - u_hat: Updated controls
+        """
         x_hat = np.array(X)
         u_hat = np.array(U)
         for t in range(len(U)):
