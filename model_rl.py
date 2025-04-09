@@ -84,7 +84,7 @@ def cost(X: np.ndarray, U: np.ndarray) -> float:
     Returns:
         Cost value
     """
-    return normalize_angle((X[0]**2 + 1/10*X[1] + 1/1000*U**2))
+    return X[0]**2 + 1/10*X[1] + 1/100*U**2
 
 def random_sample(env: gym.Env, iters: int) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -139,8 +139,14 @@ def train_model(X: np.ndarray, Y: np.ndarray) -> KernelRidge:
 
 def main():
     """Main training loop for the iLQR algorithm."""
-    horizon = 15
+    horizon = 30
+    
+
     env = gym.make('Pendulum-v1', render_mode='human')
+    # Initial data collection
+    X, Y = random_sample(env, horizon)
+    model = train_model(X, Y)
+    costs = []
     observation, _ = env.reset()
 
     # Initialize controller and model
@@ -149,13 +155,8 @@ def main():
     # Get initial state from environment
     observation, reward, terminated, truncated, _ = env.step([0])
     state = makeState(observation)
-    u = [np.array((np.random.uniform(-2, 2),)) for _ in range(horizon)]
+    u = [np.array((np.random.uniform(-1, 1),)) for _ in range(horizon)]
     states = [state]
-    
-    # Initial data collection
-    X, Y = random_sample(env, horizon)
-    model = train_model(X, Y)
-    costs = []
 
     # Training loop
     for i_episode in range(1500):
@@ -178,7 +179,7 @@ def main():
         print(f"reward: {reward}, iter: {i_episode}")
         
         # Update model periodically
-        if i_episode % 10 == 0 and i_episode > 50:
+        if i_episode % 10 == 0 and i_episode > 5000:
             new_X = np.array([np.hstack((state_next, u[0]))])
             new_Y = np.array([state_next - state])
             X = np.concatenate((X, new_X))

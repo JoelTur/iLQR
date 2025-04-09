@@ -88,15 +88,16 @@ class iLQR:
             Q_xx = Cxx_t + (fx_t.T@self.Vxx[t+1])@fx_t
             Q_ux  = Cux_t + (fu_t.T@self.Vxx[t+1])@fx_t
             Q_uu = Cuu_t + (fu_t.T@self.Vxx[t+1])@fu_t
+
             ##Compute an optimal action
-            Quu_inv = np.linalg.inv(Q_uu.reshape(1,1) + 1e-09*np.eye(Q_uu.shape[0]))
+            Quu_inv = np.linalg.inv(Q_uu + 1e-3*np.eye(Q_uu.shape[0]))
             k = -Quu_inv@Q_u
             K = -Quu_inv@Q_ux
-
             ##Update V
-            self.Vx[t] = Q_x - K.T@Q_uu@k
-            self.Vxx[t] = Q_xx - K.T@Q_uu@K 
-            self.V[t] += 0.5*k.T@Q_uu@k + k.T@Q_u
+
+            self.Vx[t] = Q_x - Q_u@Quu_inv@Q_ux
+            self.Vxx[t] = Q_xx - Q_ux.T@Quu_inv@Q_ux
+            self.V[t] -= 0.5*Q_u@Quu_inv@Q_u
             k_seq.append(k)
             K_seq.append(K)
         K_seq.reverse()
@@ -131,8 +132,8 @@ class iLQR:
         x_hat = np.array(X)
         u_hat = np.array(U)
         for t in range(len(U)):
-            u = alpha**t*k[t]+K[t]@(x_hat[t]-X[t])
+            u = alpha*k[t]+K[t]@(x_hat[t]-X[t])
             u_hat[t] = np.clip(U[t] + u, -2,2)
-            x_hat[t+1] = model.predict(np.array([np.append(x_hat[t], u_hat[t])])) + x_hat[t]
-            #x_hat[t+1] = dynamics(x_hat[t], u_hat[t]) + x_hat[t]
+            #x_hat[t+1] = model.predict(np.array([np.append(x_hat[t], u_hat[t])]))
+            x_hat[t+1] = dynamics(x_hat[t], u_hat[t])
         return x_hat, u_hat 
